@@ -49,12 +49,33 @@ Let's continue working with the same enrollment data as Tuesday.  Recall the [of
 
 **Prompt:** Create a tibble named `classes` which includes the data from all five years in a "tidy" format. In addition to the variables produced by `read_enrollemnt()`, your tibble should include a variable named `year`.
 
+```{r}
+d_2019 <- read_enrollment("raw_data/class_enrollment_summary_by_term_12.20.19.xlsx")
+d_2018 <- read_enrollment("raw_data/class_enrollment_summary_by_term_10.24.18.xlsx", 2)
+d_2017 <- read_enrollment("raw_data/class_enrollment_summary_by_term_10.20.17.xlsx")
+d_2016 <- read_enrollment("raw_data/class_enrollment_summary_by_term_fall_2016.xlsx", 0)
+d_2015 <- read_enrollment("raw_data/class_enrollment_summary_by_term_fall_2015.xlsx")
+
+classes <- bind_rows(d_2015, d_2016, d_2017, d_2018, d_2019, .id = "year") %>%
+  mutate(year = as.integer(year) + 2014)
+```
 
 
 ### Scene 2
 
 **Prompt:** Write a function called `big_classes()` whose first argument `x` requires a tibble, formatted like `classes`. It should return a tibble with the 5 highest enrollment classes in `x`. Once everyone in your group has that working, add a function argument called `my_year` which allows the user to pick a year for which she wants to know the biggest 5 courses.
 
+```{r}
+big_classes <- function(x, my_year){  
+  x %>% 
+    filter(year == my_year) %>%
+    arrange(desc(u_grad)) %>%
+    slice(1:5)
+  }
+
+big_classes(x = classes, 2015)
+
+```
 
 
 
@@ -64,10 +85,26 @@ Let's continue working with the same enrollment data as Tuesday.  Recall the [of
 
 * Create a tibble with a row for each year which includes a list-column named `q_enrollment` in which is stored the results of running `quantile()` on enrollment.
 
+```{r}
+x <- classes %>%
+  group_by(year) %>%
+  summarize(q_enrollment = list(quantile(u_grad)))
+
+x
+
+```
+
 
 
 * You now have a tibble with two columns: `year` and `q_enrollment`. Add another column called `mean_25_75` which is the average of the 25th and 75th percentiles. (You should look at `?quantile` to determine which elements in the list these are.) 
 
+```{r}
+x$q_enrollment[[1]][[2]]
+
+x %>%
+  mutate(mean_25_75 = map_dbl(q_enrollment, ~mean(c(. [[2]], . [[4]])) ))
+
+```
 
 
 
@@ -77,6 +114,19 @@ Let's continue working with the same enrollment data as Tuesday.  Recall the [of
 
 Each row in `my_plot` should be a histogram of the enrollment data for that year. Once you have created the object `plots`. Use `plot_grid()` from the **cowplot** package --- which you probably need to install --- to print out all the plots at once.
 
+```{r}
+?plot_grid
+
+plots <- classes %>%
+  group_nest(year) %>%
+  mutate(my_plot = map(data, ~ ggplot(data = .x, aes(u_grad)) + geom_histogram(bins = 40)))
+
+library(cowplot)
+plot_grid(plotlist = plots$my_plot)
+  
+
+
+```
 
 
 
